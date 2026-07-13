@@ -12,8 +12,12 @@ dependencies:
   flutter:
     sdk: flutter
 
+<<<<<<< HEAD
 resolution: workspace
 
+=======
+  permission_handler_platform_interface: any
+>>>>>>> 0fd9f3a (Update permission_handler_apple example for darwin/iOS 14 cutover.)
 dev_dependencies:
   flutter_test:
     sdk: flutter
