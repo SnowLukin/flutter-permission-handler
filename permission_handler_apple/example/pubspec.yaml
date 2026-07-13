@@ -7,17 +7,13 @@ environment:
 
 dependencies:
   baseflow_plugin_template: ^2.1.1
-  permission_handler_apple: ^9.4.9
+  permission_handler_apple: ^10.0.0
   permission_handler_platform_interface: ^4.3.2
   flutter:
     sdk: flutter
 
-<<<<<<< HEAD
 resolution: workspace
 
-=======
-  permission_handler_platform_interface: any
->>>>>>> 0fd9f3a (Update permission_handler_apple example for darwin/iOS 14 cutover.)
 dev_dependencies:
   flutter_test:
     sdk: flutter
