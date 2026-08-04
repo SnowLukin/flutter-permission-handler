@@ -54,7 +54,7 @@ In general, it's sufficient to add permission only to the `main` version.
 <details>
 <summary>iOS - Swift Package Manager (click to expand)</summary>
 
-> Requires Flutter 3.24.0 or higher and Xcode 15.0 or higher.
+> Requires Flutter 3.24.0 or higher, Xcode 15.0 or higher and a minimum iOS deployment target of 14.0.
 
 With SPM, `Package.swift` automatically detects which permissions to enable by reading your app's `Info.plist`. A permission is compiled in when its corresponding usage description key is present:
 
@@ -116,6 +116,9 @@ Then run `flutter build ios` or rebuild in Xcode as usual.
 
 <details>
 <summary>iOS - CocoaPods (click to expand)</summary>
+
+> Requires a minimum iOS deployment target of 14.0. Set `platform :ios, '14.0'` in your `Podfile`
+> and `IPHONEOS_DEPLOYMENT_TARGET` to `14.0` in your Xcode project.
 
 Add permission to your `Info.plist` file.
 [Here](https://github.com/Baseflow/flutter-permission-handler/blob/master/permission_handler/example/ios/Runner/Info.plist)'s an example `Info.plist` with a complete list of all possible permissions.

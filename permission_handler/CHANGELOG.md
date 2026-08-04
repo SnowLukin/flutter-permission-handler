@@ -1,3 +1,7 @@
+## 14.0.0
+
+- **BREAKING CHANGE:** Updates `permission_handler_apple` dependency to version 10.0.0, which raises the minimum iOS deployment target to `14.0`. Set `platform :ios, '14.0'` in your `Podfile` and `IPHONEOS_DEPLOYMENT_TARGET` to `14.0` in your Xcode project.
+
 ## 13.0.0
 
 - **BREAKING CHANGE:** , android compilesdk now set to version `compileSdkVersion 37`
