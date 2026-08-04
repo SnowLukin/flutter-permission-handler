@@ -10,14 +10,14 @@ Since version 9.1.0 of the [permission_handler](https://pub.dev/packages/permiss
 
 More detailed instructions on using the API can be found in the [README.md](../permission_handler/README.md) of the [permission_handler](https://pub.dev/packages/permission_handler) package.
 
-## Architecture (9.5.0+)
+## Architecture (10.0.0+)
 
-Starting with version 9.5.0, iOS uses a **Pigeon ProxyApi** architecture:
+Starting with version 10.0.0, iOS uses a **Pigeon ProxyApi** architecture:
 
 | Directory | Role |
 |-----------|------|
 | `darwin/` | Active Swift plugin (`PermissionHandlerDarwinPlugin`) — registers Pigeon proxy bridges only |
-| `lib/next/` | Dart permission orchestration (`PermissionHandlerApple`, handlers, `PermissionManager`) |
+| `lib/next/` | Dart permission orchestration (`PermissionHandlerApple`, handlers) |
 | `pigeon/` | Pigeon schema input (`apple_permissions.dart`) |
 | `ios/` | Legacy Obj-C implementation (frozen; not compiled with `sharedDarwinSource: true`) |
 
@@ -25,7 +25,7 @@ Request flow:
 
 ```
 App → PermissionHandlerApple (Dart)
-    → PermissionManager + permission handlers
+    → permission handlers
     → Pigeon ProxyApi classes (*.g.dart)
     ↔ PermissionHandlerDarwinPlugin (Swift)
     → Apple frameworks (CoreLocation, Photos, …)

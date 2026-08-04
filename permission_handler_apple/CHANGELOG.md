@@ -4,6 +4,7 @@
   Permission logic now lives in Dart (`lib/next/`); the Swift plugin (`darwin/`) only registers
   `ProxyApiRegistrar` bridges to Apple frameworks.
 * Adds `PermissionHandlerApple` as `dartPluginClass` extending `PermissionHandlerPlatform`.
+  Permission checks/requests live directly on this class (no separate manager/impl layer).
 * Exposes native Apple framework proxy APIs via `lib/next/exports/apple_permissions.dart` for
   advanced consumers.
 * Adds `tool/pigeon_regenerate.sh` to regenerate Pigeon artifacts from `pigeon/apple_permissions.dart`.

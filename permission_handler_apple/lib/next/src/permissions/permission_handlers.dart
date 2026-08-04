@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:permission_handler_platform_interface/permission_handler_platform_interface.dart';
 
-import '../permission_manager.dart';
 import '../permission_status_mapper.dart';
 import '../pigeon/apple_permissions.g.dart';
 import '../proxies/apple_permissions_proxy.dart';
@@ -567,5 +567,31 @@ class PermissionHandlers {
       return false;
     }
     return true;
+  }
+}
+
+/// Observes app lifecycle for location-always permission flow.
+class AppLifecycleObserver with WidgetsBindingObserver {
+  /// Creates an observer that calls [onResumed] when the app is resumed.
+  AppLifecycleObserver(this.onResumed);
+
+  /// Called when the app returns to the foreground.
+  final VoidCallback onResumed;
+
+  /// Starts observing lifecycle changes.
+  void start() {
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  /// Stops observing lifecycle changes.
+  void stop() {
+    WidgetsBinding.instance.removeObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      onResumed();
+    }
   }
 }
