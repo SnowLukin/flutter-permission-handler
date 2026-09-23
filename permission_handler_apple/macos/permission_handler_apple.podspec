@@ -3,7 +3,7 @@ Pod::Spec.new do |s|
   s.version          = '9.4.10'
   s.summary          = 'Permission plugin for Flutter.'
   s.description      = <<-DESC
-Permission plugin for Flutter. This plugin provides a cross-platform (iOS, Android) API to request and check permissions.
+Permission plugin for Flutter. This plugin provides a macOS API to request and check permissions.
                        DESC
   s.homepage         = 'https://github.com/baseflowit/flutter-permission-handler'
   s.license          = { :file => '../LICENSE' }

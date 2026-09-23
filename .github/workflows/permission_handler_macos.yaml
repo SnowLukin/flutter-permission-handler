@@ -2,13 +2,13 @@ name: permission_handler_macos
 
 on:
   push:
-    branches: [main, permission-handler-12.x]
+    branches: [main, blanc-stable]
     paths:
       - "permission_handler/**"
       - "permission_handler_apple/**"
       - ".github/workflows/permission_handler_macos.yaml"
   pull_request:
-    branches: [main, permission-handler-12.x]
+    branches: [main, blanc-stable]
     paths:
       - "permission_handler/**"
       - "permission_handler_apple/**"
