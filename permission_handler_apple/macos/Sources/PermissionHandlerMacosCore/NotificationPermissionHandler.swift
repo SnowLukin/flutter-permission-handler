@@ -1,5 +1,8 @@
 import Foundation
 import UserNotifications
+#if SWIFT_PACKAGE
+import PermissionHandlerAppleTypes
+#endif
 
 protocol NotificationCenterClient: AnyObject {
     func notificationStatus(completion: @escaping (UNAuthorizationStatus) -> Void)
@@ -10,7 +13,7 @@ protocol NotificationCenterClient: AnyObject {
 }
 
 final class NotificationPermissionHandler {
-    private static let notificationPermission = 17
+    private static let notificationPermission = Int(PermissionGroup.PermissionGroupNotification.rawValue)
     private let center: NotificationCenterClient
 
     init(center: NotificationCenterClient) {
@@ -19,11 +22,11 @@ final class NotificationPermissionHandler {
 
     func check(permission: Int, completion: @escaping (Int) -> Void) {
         guard permission == Self.notificationPermission else {
-            completion(0)
+            completion(Int(PermissionStatus.denied.rawValue))
             return
         }
         center.notificationStatus { status in
-            completion(Self.platformValue(for: status))
+            completion(Int(Self.permissionStatus(for: status).rawValue))
         }
     }
 
@@ -31,14 +34,16 @@ final class NotificationPermissionHandler {
         permissions: [Int],
         completion: @escaping (Result<[Int: Int], Error>) -> Void
     ) {
-        let denied = Dictionary(uniqueKeysWithValues: Set(permissions).map { ($0, 0) })
+        let denied = Dictionary(uniqueKeysWithValues: Set(permissions).map {
+            ($0, Int(PermissionStatus.denied.rawValue))
+        })
         guard permissions.contains(Self.notificationPermission) else {
             completion(.success(denied))
             return
         }
         let complete: (UNAuthorizationStatus) -> Void = { status in
             var results = denied
-            results[Self.notificationPermission] = Self.platformValue(for: status)
+            results[Self.notificationPermission] = Int(Self.permissionStatus(for: status).rawValue)
             completion(.success(results))
         }
         center.notificationStatus { status in
@@ -57,13 +62,13 @@ final class NotificationPermissionHandler {
         }
     }
 
-    private static func platformValue(for status: UNAuthorizationStatus) -> Int {
+    private static func permissionStatus(for status: UNAuthorizationStatus) -> PermissionStatus {
         switch status {
-        case .notDetermined: return 0
-        case .denied: return 4
-        case .authorized: return 1
-        case .provisional: return 5
-        @unknown default: return 2
+        case .notDetermined: return .denied
+        case .denied: return .permanentlyDenied
+        case .authorized: return .granted
+        case .provisional: return .provisional
+        @unknown default: return .restricted
         }
     }
 }

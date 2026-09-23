@@ -12,7 +12,13 @@ let package = Package(
     ],
     targets: [
         .target(
+            name: "PermissionHandlerAppleTypes",
+            path: "Sources/PermissionHandlerAppleTypes",
+            publicHeadersPath: "include"
+        ),
+        .target(
             name: "PermissionHandlerMacosCore",
+            dependencies: ["PermissionHandlerAppleTypes"],
             path: "Sources/PermissionHandlerMacosCore"
         ),
         .testTarget(

@@ -23,7 +23,7 @@ public final class PermissionHandlerMacosPlugin: NSObject, FlutterPlugin {
         let responder = MainThreadResponder(result: result)
         switch call.method {
         case "checkPermissionStatus":
-            guard let permission = permission(from: call.arguments) else {
+            guard let permission = call.arguments as? Int else {
                 responder.send(invalidArguments())
                 return
             }
@@ -31,7 +31,7 @@ public final class PermissionHandlerMacosPlugin: NSObject, FlutterPlugin {
                 responder.send(result)
             }
         case "requestPermissions":
-            guard let permissions = permissions(from: call.arguments) else {
+            guard let permissions = call.arguments as? [Int] else {
                 responder.send(invalidArguments())
                 return
             }
@@ -39,13 +39,13 @@ public final class PermissionHandlerMacosPlugin: NSObject, FlutterPlugin {
                 responder.send(self.flutterResult(from: result))
             }
         case "checkServiceStatus":
-            guard permission(from: call.arguments) != nil else {
+            guard (call.arguments as? Int) != nil else {
                 responder.send(invalidArguments())
                 return
             }
-            responder.send(2)
+            responder.send(Int(ServiceStatus.notApplicable.rawValue))
         case "shouldShowRequestPermissionRationale":
-            guard permission(from: call.arguments) != nil else {
+            guard (call.arguments as? Int) != nil else {
                 responder.send(invalidArguments())
                 return
             }
@@ -59,14 +59,6 @@ public final class PermissionHandlerMacosPlugin: NSObject, FlutterPlugin {
         default:
             responder.send(FlutterMethodNotImplemented)
         }
-    }
-
-    private func permission(from arguments: Any?) -> Int? {
-        arguments as? Int
-    }
-
-    private func permissions(from arguments: Any?) -> [Int]? {
-        arguments as? [Int]
     }
 
     private func invalidArguments() -> FlutterError {
