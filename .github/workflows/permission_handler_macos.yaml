@@ -1,0 +1,43 @@
+name: permission_handler_macos
+
+on:
+  push:
+    branches: [main, permission-handler-12.x]
+    paths:
+      - "permission_handler/**"
+      - "permission_handler_apple/**"
+      - ".github/workflows/permission_handler_macos.yaml"
+  pull_request:
+    branches: [main, permission-handler-12.x]
+    paths:
+      - "permission_handler/**"
+      - "permission_handler_apple/**"
+      - ".github/workflows/permission_handler_macos.yaml"
+
+jobs:
+  build:
+    name: macOS notification permissions
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+
+      - name: Run Swift tests with code coverage
+        run: swift test --enable-code-coverage
+        working-directory: ./permission_handler_apple/macos
+
+      - name: Create macOS example
+        run: flutter create --platforms=macos --no-pub .
+        working-directory: ./permission_handler_apple/example
+
+      - name: Download example dependencies
+        run: flutter pub get
+        working-directory: ./permission_handler_apple/example
+
+      - name: Run macOS debug build
+        run: flutter build macos --debug
+        working-directory: ./permission_handler_apple/example

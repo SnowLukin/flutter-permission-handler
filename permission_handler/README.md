@@ -14,6 +14,17 @@ See the [FAQ](#faq) section for more information on common questions when using 
 While the permissions are being requested during runtime, you'll still need to tell the OS which permissions your app might potentially use. That requires adding permission configuration to Android* and iOS-specific files.
 
 <details>
+<summary>macOS</summary>
+
+On macOS 12 and later, `Permission.notification` is supported through CocoaPods. The implementation checks notification status, requests authorization, and opens notification settings for the current app. Other permission groups return `denied` and have no associated service.
+
+It does not register for APNs and does not set a `UNUserNotificationCenter` delegate.
+
+When using these changes from a Git checkout, override both `permission_handler` and `permission_handler_apple` from the same repository and commit. The hosted Apple package does not contain this macOS implementation.
+
+</details>
+
+<details>
 <summary>Android (click to expand)</summary>
   
 **Upgrade pre-1.12 Android projects**

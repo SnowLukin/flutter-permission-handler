@@ -2,13 +2,19 @@
 
 [![pub package](https://img.shields.io/pub/v/permission_handler_apple.svg)](https://pub.dartlang.org/packages/permission_handler_apple) ![Build status](https://github.com/Baseflow/flutter-permission-handler/workflows/permission_handler_apple/badge.svg?branch=master) [![style: flutter lints](https://img.shields.io/badge/style-flutter_lints-40c4ff.svg)](https://pub.dev/packages/flutter_lints)
 
-The official iOS implementation of the [permission_handler](https://pub.dev/packages/permission_handler) plugin by [Baseflow](https://baseflow.com).
+The official Apple implementation of the [permission_handler](https://pub.dev/packages/permission_handler) plugin by [Baseflow](https://baseflow.com).
 
 ## Usage
 
 Since version 9.1.0 of the [permission_handler](https://pub.dev/packages/permission_handler) plugin this is the endorsed iOS implementation. This means it will automatically be added to your dependencies when you depend on `permission_handler: ^9.1.0` in your applications pubspec.yaml.
 
 More detailed instructions on using the API can be found in the [README.md](../permission_handler/README.md) of the [permission_handler](https://pub.dev/packages/permission_handler) package.
+
+## macOS
+
+On macOS 12 and later, this package supports `Permission.notification` through CocoaPods. It checks notification status, requests authorization, and opens notification settings for the current app. Other permission groups return `denied` and have no associated service.
+
+The macOS implementation does not register for APNs and does not set a `UNUserNotificationCenter` delegate.
 
 ## Issues
 
