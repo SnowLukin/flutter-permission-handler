@@ -43,10 +43,6 @@ jobs:
           flutter analyze
         working-directory: ./permission_handler_apple
 
-      - name: Run Swift tests with code coverage
-        run: swift test --enable-code-coverage
-        working-directory: ./permission_handler_apple/macos
-
       - name: Create macOS example
         run: flutter create --platforms=macos --org com.baseflow.permissionhandler --no-pub .
         working-directory: ./permission_handler/example

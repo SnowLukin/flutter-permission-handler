@@ -1,14 +1,9 @@
 import Cocoa
 import FlutterMacOS
-import UserNotifications
 
 public final class PermissionHandlerMacosPlugin: NSObject, FlutterPlugin {
     private static let channelName = "flutter.baseflow.com/permissions/methods"
-    private let permissionHandler = NotificationPermissionHandler(center: MacOSNotificationCenter())
-    private let settingsNavigator = NotificationSettingsNavigator(
-        opener: WorkspaceSettingsURLOpener(),
-        bundleIdentifier: Bundle.main.bundleIdentifier
-    )
+    private let permissionHandler = NotificationPermissionHandler()
 
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(
@@ -23,7 +18,7 @@ public final class PermissionHandlerMacosPlugin: NSObject, FlutterPlugin {
         Task { @MainActor in
             do {
                 result(try await handle(call))
-            } catch PermissionRequestError.alreadyRequesting {
+            } catch NotificationPermissionHandler.RequestError.alreadyRequesting {
                 result(FlutterError(
                     code: "ERROR_ALREADY_REQUESTING_PERMISSIONS",
                     message: "A request for permissions is already running, please wait for it to finish before doing another request (note that you can request multiple permissions at the same time).",
@@ -62,7 +57,7 @@ public final class PermissionHandlerMacosPlugin: NSObject, FlutterPlugin {
             guard call.arguments == nil else {
                 return invalidArguments()
             }
-            return settingsNavigator.open()
+            return NotificationSettingsNavigator().open()
         default:
             return FlutterMethodNotImplemented
         }
@@ -74,21 +69,5 @@ public final class PermissionHandlerMacosPlugin: NSObject, FlutterPlugin {
             message: "Permission call arguments have an invalid format.",
             details: nil
         )
-    }
-}
-
-private struct MacOSNotificationCenter: NotificationCenterClient {
-    func notificationStatus() async -> UNAuthorizationStatus {
-        await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
-    }
-
-    func requestAuthorization(options: UNAuthorizationOptions) async throws {
-        _ = try await UNUserNotificationCenter.current().requestAuthorization(options: options)
-    }
-}
-
-private final class WorkspaceSettingsURLOpener: SettingsURLOpening {
-    func open(_ url: URL) -> Bool {
-        NSWorkspace.shared.open(url)
     }
 }
