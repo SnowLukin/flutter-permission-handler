@@ -4,62 +4,52 @@ import UserNotifications
 import PermissionHandlerAppleTypes
 #endif
 
-protocol NotificationCenterClient: AnyObject {
-    func notificationStatus(completion: @escaping (UNAuthorizationStatus) -> Void)
-    func requestAuthorization(
-        options: UNAuthorizationOptions,
-        completion: @escaping (Result<Void, Error>) -> Void
-    )
+protocol NotificationCenterClient: Sendable {
+    func notificationStatus() async -> UNAuthorizationStatus
+    func requestAuthorization(options: UNAuthorizationOptions) async throws
 }
 
-final class NotificationPermissionHandler {
+enum PermissionRequestError: Error {
+    case alreadyRequesting
+}
+
+actor NotificationPermissionHandler {
     private static let notificationPermission = Int(PermissionGroup.PermissionGroupNotification.rawValue)
     private let center: NotificationCenterClient
+    private var isRequesting = false
 
     init(center: NotificationCenterClient) {
         self.center = center
     }
 
-    func check(permission: Int, completion: @escaping (Int) -> Void) {
+    func check(permission: Int) async -> Int {
         guard permission == Self.notificationPermission else {
-            completion(Int(PermissionStatus.denied.rawValue))
-            return
+            return Int(PermissionStatus.denied.rawValue)
         }
-        center.notificationStatus { status in
-            completion(Int(Self.permissionStatus(for: status).rawValue))
-        }
+        let status = await center.notificationStatus()
+        return Int(Self.permissionStatus(for: status).rawValue)
     }
 
-    func request(
-        permissions: [Int],
-        completion: @escaping (Result<[Int: Int], Error>) -> Void
-    ) {
-        let denied = Dictionary(uniqueKeysWithValues: Set(permissions).map {
+    func request(permissions: [Int]) async throws -> [Int: Int] {
+        guard !isRequesting else {
+            throw PermissionRequestError.alreadyRequesting
+        }
+        isRequesting = true
+        defer { isRequesting = false }
+
+        var results = Dictionary(uniqueKeysWithValues: Set(permissions).map {
             ($0, Int(PermissionStatus.denied.rawValue))
         })
         guard permissions.contains(Self.notificationPermission) else {
-            completion(.success(denied))
-            return
+            return results
         }
-        let complete: (UNAuthorizationStatus) -> Void = { status in
-            var results = denied
-            results[Self.notificationPermission] = Int(Self.permissionStatus(for: status).rawValue)
-            completion(.success(results))
+        var status = await center.notificationStatus()
+        if status == .notDetermined {
+            try await center.requestAuthorization(options: [.alert, .sound, .badge])
+            status = await center.notificationStatus()
         }
-        center.notificationStatus { status in
-            guard status == .notDetermined else {
-                complete(status)
-                return
-            }
-            self.center.requestAuthorization(options: [.alert, .sound, .badge]) { result in
-                switch result {
-                case .failure(let error):
-                    completion(.failure(error))
-                case .success:
-                    self.center.notificationStatus(completion: complete)
-                }
-            }
-        }
+        results[Self.notificationPermission] = Int(Self.permissionStatus(for: status).rawValue)
+        return results
     }
 
     private static func permissionStatus(for status: UNAuthorizationStatus) -> PermissionStatus {
@@ -80,10 +70,16 @@ protocol SettingsURLOpening: AnyObject {
 final class NotificationSettingsNavigator {
     private let opener: SettingsURLOpening
     private let bundleIdentifier: String?
+    private let macOSMajorVersion: Int
 
-    init(opener: SettingsURLOpening, bundleIdentifier: String?) {
+    init(
+        opener: SettingsURLOpening,
+        bundleIdentifier: String?,
+        macOSMajorVersion: Int = ProcessInfo.processInfo.operatingSystemVersion.majorVersion
+    ) {
         self.opener = opener
         self.bundleIdentifier = bundleIdentifier
+        self.macOSMajorVersion = macOSMajorVersion
     }
 
     func open() -> Bool {
@@ -92,7 +88,9 @@ final class NotificationSettingsNavigator {
 
     private var settingsURLs: [URL] {
         var urls: [URL] = []
-        if let bundleIdentifier, !bundleIdentifier.isEmpty,
+        if macOSMajorVersion < 13 {
+            urls.append(URL(fileURLWithPath: "/System/Library/PreferencePanes/Notifications.prefPane"))
+        } else if let bundleIdentifier, !bundleIdentifier.isEmpty,
            let bundleURL = URL(
                string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=\(bundleIdentifier)"
            ) {

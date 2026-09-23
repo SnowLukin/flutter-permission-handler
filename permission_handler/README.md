@@ -16,7 +16,7 @@ While the permissions are being requested during runtime, you'll still need to t
 <details>
 <summary>macOS</summary>
 
-On macOS 12 and later, `Permission.notification` is supported through CocoaPods. The implementation checks notification status, requests authorization, and opens notification settings for the current app. Other permission groups return `denied` and have no associated service.
+On macOS 12 and later, `Permission.notification` is supported through CocoaPods. The implementation checks notification status, requests authorization, and opens notification settings. On macOS 13 and later, settings open for the current app; on macOS 12, the Notifications preference pane opens. Other permission groups return `denied` and have no associated service.
 
 It does not register for APNs and does not set a `UNUserNotificationCenter` delegate.
 

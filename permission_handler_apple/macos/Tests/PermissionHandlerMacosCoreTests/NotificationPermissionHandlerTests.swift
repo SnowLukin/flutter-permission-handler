@@ -4,105 +4,182 @@ import XCTest
 @testable import PermissionHandlerMacosCore
 
 final class NotificationPermissionHandlerTests: XCTestCase {
-    func testMapsEveryNotificationAuthorizationStatus() {
+    func testMapsEveryNotificationAuthorizationStatus() async {
         let cases: [(UNAuthorizationStatus, Int)] = [
             (.notDetermined, 0), (.denied, 4), (.authorized, 1), (.provisional, 5),
         ]
         for (status, expected) in cases {
             let center = FakeNotificationCenter(statuses: [status])
             let handler = NotificationPermissionHandler(center: center)
-            var result: Int?
-            handler.check(permission: 17) { result = $0 }
+
+            let result = await handler.check(permission: 17)
+            let statusRequestCount = await center.statusRequestCount()
+
             XCTAssertEqual(result, expected)
-            XCTAssertEqual(center.statusRequests, 1)
+            XCTAssertEqual(statusRequestCount, 1)
         }
     }
 
-    func testRejectsUnsupportedPermissionWithoutConsultingTheSystem() {
+    func testRejectsUnsupportedPermissionWithoutConsultingTheSystem() async {
         let center = FakeNotificationCenter(statuses: [])
         let handler = NotificationPermissionHandler(center: center)
-        var result: Int?
-        handler.check(permission: 1) { result = $0 }
+
+        let result = await handler.check(permission: 1)
+        let statusRequestCount = await center.statusRequestCount()
+
         XCTAssertEqual(result, 0)
-        XCTAssertEqual(center.statusRequests, 0)
+        XCTAssertEqual(statusRequestCount, 0)
     }
 
-    func testReturnsGrantedWhenTheSystemAcceptsTheRequest() {
+    func testReturnsGrantedWhenTheSystemAcceptsTheRequest() async throws {
         let center = FakeNotificationCenter(
             statuses: [.notDetermined, .authorized]
         )
         let handler = NotificationPermissionHandler(center: center)
 
-        var result: Result<[Int: Int], Error>?
-        handler.request(permissions: [17]) { result = $0 }
+        let result = try await handler.request(permissions: [17])
+        let requestCount = await center.requestCount()
+        let requestedOptions = await center.requestedOptions()
 
-        XCTAssertEqual(try result?.get(), [17: 1])
-        XCTAssertEqual(center.requestCount, 1)
-        XCTAssertEqual(center.requestedOptions, [.alert, .sound, .badge])
+        XCTAssertEqual(result, [17: 1])
+        XCTAssertEqual(requestCount, 1)
+        XCTAssertEqual(requestedOptions, [.alert, .sound, .badge])
     }
 
-    func testReturnsPermanentlyDeniedWhenTheSystemRejectsTheRequest() {
+    func testReturnsPermanentlyDeniedWhenTheSystemRejectsTheRequest() async throws {
         let center = FakeNotificationCenter(
             statuses: [.notDetermined, .denied]
         )
         let handler = NotificationPermissionHandler(center: center)
 
-        var result: Result<[Int: Int], Error>?
-        handler.request(permissions: [17]) { result = $0 }
+        let result = try await handler.request(permissions: [17])
+        let requestCount = await center.requestCount()
 
-        XCTAssertEqual(try result?.get(), [17: 4])
-        XCTAssertEqual(center.requestCount, 1)
+        XCTAssertEqual(result, [17: 4])
+        XCTAssertEqual(requestCount, 1)
     }
 
-    func testKeepsProvisionalStatusWithoutAnotherRequest() {
+    func testKeepsProvisionalStatusWithoutAnotherRequest() async throws {
         let center = FakeNotificationCenter(statuses: [.provisional])
         let handler = NotificationPermissionHandler(center: center)
 
-        var result: Result<[Int: Int], Error>?
-        handler.request(permissions: [17]) { result = $0 }
+        let result = try await handler.request(permissions: [17])
+        let requestCount = await center.requestCount()
 
-        XCTAssertEqual(try result?.get(), [17: 5])
-        XCTAssertEqual(center.requestCount, 0)
+        XCTAssertEqual(result, [17: 5])
+        XCTAssertEqual(requestCount, 0)
     }
 
-    func testDoesNotRequestAgainAfterTheUserHasAnswered() {
+    func testDoesNotRequestAgainAfterTheUserHasAnswered() async throws {
         let center = FakeNotificationCenter(statuses: [.denied])
         let handler = NotificationPermissionHandler(center: center)
 
-        var result: Result<[Int: Int], Error>?
-        handler.request(permissions: [17]) { result = $0 }
+        let result = try await handler.request(permissions: [17])
+        let requestCount = await center.requestCount()
 
-        XCTAssertEqual(try result?.get(), [17: 4])
-        XCTAssertEqual(center.requestCount, 0)
+        XCTAssertEqual(result, [17: 4])
+        XCTAssertEqual(requestCount, 0)
     }
 
-    func testHandlesEmptyMixedAndDuplicatePermissionLists() {
+    func testHandlesEmptyMixedAndDuplicatePermissionLists() async throws {
         let center = FakeNotificationCenter(statuses: [.authorized])
         let handler = NotificationPermissionHandler(center: center)
 
-        var empty: Result<[Int: Int], Error>?
-        handler.request(permissions: []) { empty = $0 }
-        XCTAssertEqual(try empty?.get(), [:])
-        XCTAssertEqual(center.statusRequests, 0)
+        let empty = try await handler.request(permissions: [])
+        let emptyStatusRequestCount = await center.statusRequestCount()
 
-        var mixed: Result<[Int: Int], Error>?
-        handler.request(permissions: [17, 1, 17, 1]) { mixed = $0 }
-        XCTAssertEqual(try mixed?.get(), [17: 1, 1: 0])
-        XCTAssertEqual(center.statusRequests, 1)
-        XCTAssertEqual(center.requestCount, 0)
+        XCTAssertEqual(empty, [:])
+        XCTAssertEqual(emptyStatusRequestCount, 0)
+
+        let mixed = try await handler.request(permissions: [17, 1, 17, 1])
+        let mixedStatusRequestCount = await center.statusRequestCount()
+        let requestCount = await center.requestCount()
+
+        XCTAssertEqual(mixed, [17: 1, 1: 0])
+        XCTAssertEqual(mixedStatusRequestCount, 1)
+        XCTAssertEqual(requestCount, 0)
     }
 
-    func testPropagatesRequestError() {
+    func testPropagatesRequestError() async {
         let center = FakeNotificationCenter(
             statuses: [.notDetermined],
-            requestResult: .failure(FakeError.failed)
+            requestOutcomes: [.failure]
         )
         let handler = NotificationPermissionHandler(center: center)
 
-        var result: Result<[Int: Int], Error>?
-        handler.request(permissions: [17]) { result = $0 }
+        do {
+            _ = try await handler.request(permissions: [17])
+            XCTFail("Expected the authorization error to propagate")
+        } catch let error as FakeError {
+            XCTAssertEqual(error, .failed)
+        } catch {
+            XCTFail("Received an unexpected error")
+        }
+    }
 
-        XCTAssertThrowsError(try result?.get())
+    func testAllowsANewRequestAfterAnAuthorizationError() async throws {
+        let center = FakeNotificationCenter(
+            statuses: [.notDetermined, .notDetermined, .authorized],
+            requestOutcomes: [.failure, .success]
+        )
+        let handler = NotificationPermissionHandler(center: center)
+
+        do {
+            _ = try await handler.request(permissions: [17])
+            XCTFail("Expected the first authorization request to fail")
+        } catch let error as FakeError {
+            XCTAssertEqual(error, .failed)
+        } catch {
+            XCTFail("Received an unexpected error")
+        }
+
+        let result = try await handler.request(permissions: [17])
+        let requestCount = await center.requestCount()
+
+        XCTAssertEqual(result, [17: 1])
+        XCTAssertEqual(requestCount, 2)
+    }
+
+    func testReadsTheCurrentStatusForEveryCheck() async {
+        let center = FakeNotificationCenter(statuses: [.authorized, .denied])
+        let handler = NotificationPermissionHandler(center: center)
+
+        let initialResult = await handler.check(permission: 17)
+        let updatedResult = await handler.check(permission: 17)
+        let statusRequestCount = await center.statusRequestCount()
+
+        XCTAssertEqual(initialResult, 1)
+        XCTAssertEqual(updatedResult, 4)
+        XCTAssertEqual(statusRequestCount, 2)
+    }
+
+    func testRejectsAConcurrentRequestWhileTheSystemRequestIsInFlight() async throws {
+        let center = BlockingNotificationCenter()
+        let handler = NotificationPermissionHandler(center: center)
+        let firstRequest = Task {
+            try await handler.request(permissions: [17])
+        }
+
+        await center.waitUntilRequestStarts()
+
+        do {
+            _ = try await handler.request(permissions: [17])
+            XCTFail("Expected the concurrent authorization request to be rejected")
+        } catch PermissionRequestError.alreadyRequesting {
+        } catch {
+            XCTFail("Received an unexpected error")
+        }
+
+        let requestCountWhileFirstIsPending = await center.requestCount()
+        XCTAssertEqual(requestCountWhileFirstIsPending, 1)
+
+        await center.releaseFirstRequest()
+
+        let firstResult = try await firstRequest.value
+        let finalRequestCount = await center.requestCount()
+
+        XCTAssertEqual(firstResult, [17: 1])
+        XCTAssertEqual(finalRequestCount, 1)
     }
 
     func testOpensEachFlavorWithoutFallingBackAfterSuccess() {
@@ -110,70 +187,186 @@ final class NotificationPermissionHandlerTests: XCTestCase {
             let opener = FakeSettingsURLOpener(results: [true])
             let navigator = NotificationSettingsNavigator(
                 opener: opener,
-                bundleIdentifier: bundleIdentifier
+                bundleIdentifier: bundleIdentifier,
+                macOSMajorVersion: 13
             )
-            XCTAssertTrue(navigator.open())
-            XCTAssertEqual(opener.urls.count, 1)
-            XCTAssertTrue(opener.urls[0].absoluteString.contains(bundleIdentifier))
+
+            let didOpen = navigator.open()
+            let urls = opener.urls
+
+            XCTAssertTrue(didOpen)
+            XCTAssertEqual(urls.count, 1)
+            XCTAssertTrue(urls[0].absoluteString.contains(bundleIdentifier))
         }
     }
 
     func testReturnsFalseWhenSettingsCannotBeOpened() {
         let opener = FakeSettingsURLOpener(results: [false])
-        let navigator = NotificationSettingsNavigator(opener: opener, bundleIdentifier: nil)
-        XCTAssertFalse(navigator.open())
-        XCTAssertEqual(opener.urls.count, 1)
+        let navigator = NotificationSettingsNavigator(
+            opener: opener,
+            bundleIdentifier: nil,
+            macOSMajorVersion: 13
+        )
+
+        let didOpen = navigator.open()
+        let urls = opener.urls
+
+        XCTAssertFalse(didOpen)
+        XCTAssertEqual(urls.count, 1)
     }
 
-    func testFallsBackToTheNotificationPreferencePane() {
+    func testFallsBackToTheNotificationPreferencePaneOnMacOS13OrLater() {
         let opener = FakeSettingsURLOpener(results: [false, true])
         let navigator = NotificationSettingsNavigator(
             opener: opener,
-            bundleIdentifier: "com.example.permissionhandler"
+            bundleIdentifier: "com.example.permissionhandler",
+            macOSMajorVersion: 13
         )
 
-        XCTAssertTrue(navigator.open())
-        XCTAssertEqual(opener.urls.count, 2)
+        let didOpen = navigator.open()
+        let urls = opener.urls
+
+        XCTAssertTrue(didOpen)
+        XCTAssertEqual(urls.count, 2)
         XCTAssertEqual(
-            opener.urls.first?.absoluteString,
+            urls.first?.absoluteString,
             "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=com.example.permissionhandler"
         )
         XCTAssertEqual(
-            opener.urls.last?.absoluteString,
+            urls.last?.absoluteString,
+            "x-apple.systempreferences:com.apple.preference.notifications"
+        )
+    }
+
+    func testOpensTheNotificationsPreferencePaneFirstOnMacOS12() {
+        let opener = FakeSettingsURLOpener(results: [true])
+        let navigator = NotificationSettingsNavigator(
+            opener: opener,
+            bundleIdentifier: "com.example.permissionhandler",
+            macOSMajorVersion: 12
+        )
+
+        let didOpen = navigator.open()
+        let urls = opener.urls
+
+        XCTAssertTrue(didOpen)
+        XCTAssertEqual(urls.count, 1)
+        XCTAssertEqual(
+            urls.first?.path,
+            "/System/Library/PreferencePanes/Notifications.prefPane"
+        )
+    }
+
+    func testFallsBackToTheGeneralNotificationSettingsOnMacOS12() {
+        let opener = FakeSettingsURLOpener(results: [false, true])
+        let navigator = NotificationSettingsNavigator(
+            opener: opener,
+            bundleIdentifier: "com.example.permissionhandler",
+            macOSMajorVersion: 12
+        )
+
+        let didOpen = navigator.open()
+        let urls = opener.urls
+
+        XCTAssertTrue(didOpen)
+        XCTAssertEqual(urls.count, 2)
+        XCTAssertEqual(
+            urls.first?.path,
+            "/System/Library/PreferencePanes/Notifications.prefPane"
+        )
+        XCTAssertEqual(
+            urls.last?.absoluteString,
             "x-apple.systempreferences:com.apple.preference.notifications"
         )
     }
 }
 
-private final class FakeNotificationCenter: NotificationCenterClient {
+private actor FakeNotificationCenter: NotificationCenterClient {
     private var statuses: [UNAuthorizationStatus]
-    private let requestResult: Result<Void, Error>
-    private(set) var statusRequests = 0
-    private(set) var requestCount = 0
-    private(set) var requestedOptions: UNAuthorizationOptions = []
+    private var requestOutcomes: [RequestOutcome]
+    private var statusRequests = 0
+    private var requests = 0
+    private var options: UNAuthorizationOptions = []
 
     init(
         statuses: [UNAuthorizationStatus],
-        requestResult: Result<Void, Error> = .success(())
+        requestOutcomes: [RequestOutcome] = [.success]
     ) {
         self.statuses = statuses
-        self.requestResult = requestResult
+        self.requestOutcomes = requestOutcomes
     }
 
-    func notificationStatus(
-        completion: @escaping (UNAuthorizationStatus) -> Void
-    ) {
+    func notificationStatus() async -> UNAuthorizationStatus {
         statusRequests += 1
-        completion(statuses.removeFirst())
+        return statuses.removeFirst()
     }
 
-    func requestAuthorization(
-        options: UNAuthorizationOptions,
-        completion: @escaping (Result<Void, Error>) -> Void
-    ) {
-        requestCount += 1
-        requestedOptions = options
-        completion(requestResult)
+    func requestAuthorization(options: UNAuthorizationOptions) async throws {
+        requests += 1
+        self.options = options
+
+        switch requestOutcomes.removeFirst() {
+        case .success:
+            return
+        case .failure:
+            throw FakeError.failed
+        }
+    }
+
+    func statusRequestCount() -> Int {
+        statusRequests
+    }
+
+    func requestCount() -> Int {
+        requests
+    }
+
+    func requestedOptions() -> UNAuthorizationOptions {
+        options
+    }
+}
+
+private actor BlockingNotificationCenter: NotificationCenterClient {
+    private var isReleased = false
+    private var requests = 0
+    private var requestStartWaiter: CheckedContinuation<Void, Never>?
+    private var requestReleaseWaiter: CheckedContinuation<Void, Never>?
+
+    func notificationStatus() async -> UNAuthorizationStatus {
+        isReleased ? .authorized : .notDetermined
+    }
+
+    func requestAuthorization(options: UNAuthorizationOptions) async throws {
+        requests += 1
+        guard requests == 1 else {
+            throw FakeError.unexpectedSecondRequest
+        }
+
+        requestStartWaiter?.resume()
+        requestStartWaiter = nil
+
+        await withCheckedContinuation { continuation in
+            requestReleaseWaiter = continuation
+        }
+    }
+
+    func waitUntilRequestStarts() async {
+        guard requests == 0 else {
+            return
+        }
+        await withCheckedContinuation { continuation in
+            requestStartWaiter = continuation
+        }
+    }
+
+    func releaseFirstRequest() {
+        isReleased = true
+        requestReleaseWaiter?.resume()
+        requestReleaseWaiter = nil
+    }
+
+    func requestCount() -> Int {
+        requests
     }
 }
 
@@ -191,6 +384,12 @@ private final class FakeSettingsURLOpener: SettingsURLOpening {
     }
 }
 
-private enum FakeError: Error {
+private enum RequestOutcome: Sendable {
+    case success
+    case failure
+}
+
+private enum FakeError: Error, Equatable {
     case failed
+    case unexpectedSecondRequest
 }

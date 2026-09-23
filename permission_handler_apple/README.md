@@ -12,7 +12,7 @@ More detailed instructions on using the API can be found in the [README.md](../p
 
 ## macOS
 
-On macOS 12 and later, this package supports `Permission.notification` through CocoaPods. It checks notification status, requests authorization, and opens notification settings for the current app. Other permission groups return `denied` and have no associated service.
+On macOS 12 and later, this package supports `Permission.notification` through CocoaPods. It checks notification status, requests authorization, and opens notification settings. On macOS 13 and later, settings open for the current app; on macOS 12, the Notifications preference pane opens. Other permission groups return `denied` and have no associated service.
 
 The macOS implementation does not register for APNs and does not set a `UNUserNotificationCenter` delegate.
 

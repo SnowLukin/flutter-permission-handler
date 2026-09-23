@@ -20,44 +20,51 @@ public final class PermissionHandlerMacosPlugin: NSObject, FlutterPlugin {
     }
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        let responder = MainThreadResponder(result: result)
+        Task { @MainActor in
+            do {
+                result(try await handle(call))
+            } catch PermissionRequestError.alreadyRequesting {
+                result(FlutterError(
+                    code: "ERROR_ALREADY_REQUESTING_PERMISSIONS",
+                    message: "A request for permissions is already running, please wait for it to finish before doing another request (note that you can request multiple permissions at the same time).",
+                    details: nil
+                ))
+            } catch {
+                result(FlutterError(code: "system_error", message: error.localizedDescription, details: nil))
+            }
+        }
+    }
+
+    @MainActor
+    private func handle(_ call: FlutterMethodCall) async throws -> Any? {
         switch call.method {
         case "checkPermissionStatus":
             guard let permission = call.arguments as? Int else {
-                responder.send(invalidArguments())
-                return
+                return invalidArguments()
             }
-            permissionHandler.check(permission: permission) { result in
-                responder.send(result)
-            }
+            return await permissionHandler.check(permission: permission)
         case "requestPermissions":
             guard let permissions = call.arguments as? [Int] else {
-                responder.send(invalidArguments())
-                return
+                return invalidArguments()
             }
-            permissionHandler.request(permissions: permissions) { result in
-                responder.send(self.flutterResult(from: result))
-            }
+            return try await permissionHandler.request(permissions: permissions)
         case "checkServiceStatus":
             guard (call.arguments as? Int) != nil else {
-                responder.send(invalidArguments())
-                return
+                return invalidArguments()
             }
-            responder.send(Int(ServiceStatus.notApplicable.rawValue))
+            return Int(ServiceStatus.notApplicable.rawValue)
         case "shouldShowRequestPermissionRationale":
             guard (call.arguments as? Int) != nil else {
-                responder.send(invalidArguments())
-                return
+                return invalidArguments()
             }
-            responder.send(false)
+            return false
         case "openAppSettings":
             guard call.arguments == nil else {
-                responder.send(invalidArguments())
-                return
+                return invalidArguments()
             }
-            responder.send(settingsNavigator.open())
+            return settingsNavigator.open()
         default:
-            responder.send(FlutterMethodNotImplemented)
+            return FlutterMethodNotImplemented
         }
     }
 
@@ -68,58 +75,20 @@ public final class PermissionHandlerMacosPlugin: NSObject, FlutterPlugin {
             details: nil
         )
     }
-
-    private func flutterResult<T>(from result: Result<T, Error>) -> Any? {
-        switch result {
-        case .success(let value):
-            return value
-        case .failure(let error):
-            return FlutterError(
-                code: "system_error",
-                message: error.localizedDescription,
-                details: nil
-            )
-        }
-    }
 }
 
-private final class MacOSNotificationCenter: NotificationCenterClient {
-    func notificationStatus(completion: @escaping (UNAuthorizationStatus) -> Void) {
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
-            completion(settings.authorizationStatus)
-        }
+private struct MacOSNotificationCenter: NotificationCenterClient {
+    func notificationStatus() async -> UNAuthorizationStatus {
+        await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     }
 
-    func requestAuthorization(
-        options: UNAuthorizationOptions,
-        completion: @escaping (Result<Void, Error>) -> Void
-    ) {
-        UNUserNotificationCenter.current().requestAuthorization(options: options) { _, error in
-            if let error {
-                completion(.failure(error))
-                return
-            }
-            completion(.success(()))
-        }
+    func requestAuthorization(options: UNAuthorizationOptions) async throws {
+        _ = try await UNUserNotificationCenter.current().requestAuthorization(options: options)
     }
 }
 
 private final class WorkspaceSettingsURLOpener: SettingsURLOpening {
     func open(_ url: URL) -> Bool {
         NSWorkspace.shared.open(url)
-    }
-}
-
-private final class MainThreadResponder {
-    private let result: FlutterResult
-
-    init(result: @escaping FlutterResult) {
-        self.result = result
-    }
-
-    func send(_ value: Any?) {
-        DispatchQueue.main.async { [result] in
-            result(value)
-        }
     }
 }

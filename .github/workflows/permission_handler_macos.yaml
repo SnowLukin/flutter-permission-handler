@@ -48,13 +48,13 @@ jobs:
         working-directory: ./permission_handler_apple/macos
 
       - name: Create macOS example
-        run: flutter create --platforms=macos --no-pub .
-        working-directory: ./permission_handler_apple/example
+        run: flutter create --platforms=macos --org com.baseflow.permissionhandler --no-pub .
+        working-directory: ./permission_handler/example
 
       - name: Download example dependencies
         run: flutter pub get
-        working-directory: ./permission_handler_apple/example
+        working-directory: ./permission_handler/example
 
       - name: Run macOS debug build
         run: flutter build macos --debug
-        working-directory: ./permission_handler_apple/example
+        working-directory: ./permission_handler/example
