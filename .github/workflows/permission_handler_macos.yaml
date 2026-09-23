@@ -26,6 +26,23 @@ jobs:
         with:
           channel: "stable"
 
+      - name: Check app facing package
+        run: |
+          printf '%s\n' 'dependency_overrides:' '  permission_handler_apple:' '    path: ../permission_handler_apple' > pubspec_overrides.yaml
+          printf '%s\n' 'dependency_overrides:' '  permission_handler_apple:' '    path: ../../permission_handler_apple' > example/pubspec_overrides.yaml
+          flutter pub get
+          dart format --output=none --set-exit-if-changed .
+          flutter analyze
+          flutter test
+        working-directory: ./permission_handler
+
+      - name: Check Apple platform package
+        run: |
+          flutter pub get
+          dart format --output=none --set-exit-if-changed .
+          flutter analyze
+        working-directory: ./permission_handler_apple
+
       - name: Run Swift tests with code coverage
         run: swift test --enable-code-coverage
         working-directory: ./permission_handler_apple/macos
