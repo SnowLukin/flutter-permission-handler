@@ -1,3 +1,7 @@
+## Unreleased
+
+* Adds macOS 12+ support for notification permissions through CocoaPods.
+
 ## 9.4.10
 
 * Fixed Info.plist lookup in Package.swift to auto-apply permissions.

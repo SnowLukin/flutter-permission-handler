@@ -1,3 +1,7 @@
+## Unreleased
+
+- Adds a default macOS implementation for notification permissions.
+
 ## 12.0.3
 
 - Rewrites the "iOS - CocaoPods" section in the README.md to match version 8.0.0 of the permission_handler.

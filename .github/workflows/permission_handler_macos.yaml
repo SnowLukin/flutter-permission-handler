@@ -1,0 +1,56 @@
+name: permission_handler_macos
+
+on:
+  push:
+    branches: [main, blanc-stable]
+    paths:
+      - "permission_handler/**"
+      - "permission_handler_apple/**"
+      - ".github/workflows/permission_handler_macos.yaml"
+  pull_request:
+    branches: [main, blanc-stable]
+    paths:
+      - "permission_handler/**"
+      - "permission_handler_apple/**"
+      - ".github/workflows/permission_handler_macos.yaml"
+
+jobs:
+  build:
+    name: macOS notification permissions
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+
+      - name: Check app facing package
+        run: |
+          printf '%s\n' 'dependency_overrides:' '  permission_handler_apple:' '    path: ../permission_handler_apple' > pubspec_overrides.yaml
+          printf '%s\n' 'dependency_overrides:' '  permission_handler_apple:' '    path: ../../permission_handler_apple' > example/pubspec_overrides.yaml
+          flutter pub get
+          dart format --output=none --set-exit-if-changed .
+          flutter analyze
+          flutter test
+        working-directory: ./permission_handler
+
+      - name: Check Apple platform package
+        run: |
+          flutter pub get
+          dart format --output=none --set-exit-if-changed .
+          flutter analyze
+        working-directory: ./permission_handler_apple
+
+      - name: Create macOS example
+        run: flutter create --platforms=macos --org com.baseflow.permissionhandler --no-pub .
+        working-directory: ./permission_handler/example
+
+      - name: Download example dependencies
+        run: flutter pub get
+        working-directory: ./permission_handler/example
+
+      - name: Run macOS debug build
+        run: flutter build macos --debug
+        working-directory: ./permission_handler/example
